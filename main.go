@@ -158,7 +158,6 @@ func fetchTokenPrice(token string) (float64, error) {
 }
 
 func getSendMsgAndSnapshot() (string, string) {
-	fmt.Printf("获取到 %d 个空投项目\n", len(apiResp.Airdrops))
 	fmt.Printf("今日日期: %s\n", time.Now().Format("2006-01-02"))
 
 	cfg, err := loadConfig()
