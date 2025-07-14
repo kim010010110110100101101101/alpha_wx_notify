@@ -209,7 +209,8 @@ func hashMsg(msg string) string {
 }
 
 func main() {
-	 fmt.Printf("[%s] 空投监控服务启动\n", time.Now().Format("2006-01-02 15:04:05"))
+	log.Println("测试一下有没有日志 ")
+	fmt.Printf("[%s] 空投监控服务启动\n", time.Now().Format("2006-01-02 15:04:05"))
 
 	var lastHash string
 	cfg, err := loadConfig()
