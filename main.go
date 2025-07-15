@@ -98,9 +98,11 @@ func getAirdrop() *ApiResponse {
 	// 使用当前时间戳避免缓存
 	url := fmt.Sprintf("https://alpha123.uk/api/data?t=%d&fresh=1", time.Now().UnixMilli())
 
+	
 	// 重试机制
 	for attempt := 1; attempt <= 3; attempt++ {
 		fmt.Printf("尝试第 %d 次请求...\n", attempt)
+		log.Printf("请求地址: %s", url)
 
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
@@ -229,6 +231,7 @@ func fetchTokenPrice(token string) (float64, error) {
 
 	// 重试机制
 	for attempt := 1; attempt <= 2; attempt++ {
+		log.Printf("价格API请求地址: %s", url)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			return 0, err
