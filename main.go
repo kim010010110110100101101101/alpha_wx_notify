@@ -61,7 +61,7 @@ func loadConfig() (*Config, error) {
 // 处理可能被gzip压缩的响应体
 func readResponseBody(resp *http.Response) ([]byte, error) {
 	var reader io.Reader = resp.Body
-	
+
 	// 检查是否是gzip压缩
 	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		gzipReader, err := gzip.NewReader(resp.Body)
@@ -71,7 +71,7 @@ func readResponseBody(resp *http.Response) ([]byte, error) {
 		defer gzipReader.Close()
 		reader = gzipReader
 	}
-	
+
 	return ioutil.ReadAll(reader)
 }
 
@@ -101,7 +101,7 @@ func getAirdrop() *ApiResponse {
 	// 重试机制
 	for attempt := 1; attempt <= 3; attempt++ {
 		fmt.Printf("尝试第 %d 次请求...\n", attempt)
-		
+
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			log.Println(err)
@@ -131,7 +131,7 @@ func getAirdrop() *ApiResponse {
 		client := &http.Client{
 			Timeout: 30 * time.Second,
 		}
-		
+
 		resp, err := client.Do(req)
 		if err != nil {
 			log.Printf("请求失败 (尝试 %d/3): %v\n", attempt, err)
@@ -158,11 +158,11 @@ func getAirdrop() *ApiResponse {
 
 		// 打印响应状态码和前100个字符用于调试
 		fmt.Printf("HTTP状态码: %d\n", resp.StatusCode)
-		if len(body) > 100 {
-			fmt.Printf("响应内容前100字符: %s\n", string(body[:100]))
-		} else {
-			fmt.Printf("响应内容: %s\n", string(body))
-		}
+		// if len(body) > 100 {
+		// fmt.Printf("响应内容前100字符: %s\n", string(body[:100]))
+		// } else {
+		fmt.Printf("响应内容: %s\n", string(body))
+		// }
 
 		// 检查HTTP状态码
 		if resp.StatusCode == 403 {
@@ -175,7 +175,7 @@ func getAirdrop() *ApiResponse {
 			}
 			continue
 		}
-		
+
 		if resp.StatusCode != 200 {
 			fmt.Printf("API请求失败，状态码: %d (尝试 %d/3)\n", resp.StatusCode, attempt)
 			if attempt < 3 {
@@ -217,7 +217,7 @@ func getAirdrop() *ApiResponse {
 		fmt.Println("API请求成功！")
 		return &apiResp
 	}
-	
+
 	// 所有重试都失败了
 	fmt.Println("所有重试都失败，无法获取空投数据")
 	return nil
@@ -226,14 +226,14 @@ func getAirdrop() *ApiResponse {
 // 获取token单价
 func fetchTokenPrice(token string) (float64, error) {
 	url := fmt.Sprintf("https://alpha123.uk/api/price/%s?t=%d&fresh=1", token, time.Now().UnixMilli())
-	
+
 	// 重试机制
 	for attempt := 1; attempt <= 2; attempt++ {
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			return 0, err
 		}
-		
+
 		// 设置完整的浏览器请求头
 		req.Header.Set("Accept", "application/json, text/plain, */*")
 		req.Header.Set("Accept-Language", "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7")
@@ -256,7 +256,7 @@ func fetchTokenPrice(token string) (float64, error) {
 		client := &http.Client{
 			Timeout: 15 * time.Second,
 		}
-		
+
 		resp, err := client.Do(req)
 		if err != nil {
 			if attempt < 2 {
@@ -266,7 +266,7 @@ func fetchTokenPrice(token string) (float64, error) {
 			return 0, err
 		}
 		defer resp.Body.Close()
-		
+
 		// 检查状态码
 		if resp.StatusCode == 403 {
 			if attempt < 2 {
@@ -275,7 +275,7 @@ func fetchTokenPrice(token string) (float64, error) {
 			}
 			return 0, fmt.Errorf("price API blocked (403)")
 		}
-		
+
 		if resp.StatusCode != 200 {
 			if attempt < 2 {
 				time.Sleep(time.Duration(2+attempt) * time.Second)
@@ -283,7 +283,7 @@ func fetchTokenPrice(token string) (float64, error) {
 			}
 			return 0, fmt.Errorf("price API failed with status %d", resp.StatusCode)
 		}
-		
+
 		// 读取响应体（处理gzip压缩）
 		body, err := readResponseBody(resp)
 		if err != nil {
@@ -293,7 +293,7 @@ func fetchTokenPrice(token string) (float64, error) {
 			}
 			return 0, fmt.Errorf("failed to read response body: %v", err)
 		}
-		
+
 		var result struct {
 			Success bool    `json:"success"`
 			Price   float64 `json:"price"`
@@ -305,13 +305,13 @@ func fetchTokenPrice(token string) (float64, error) {
 			}
 			return 0, fmt.Errorf("failed to parse JSON: %v, body: %s", err, string(body))
 		}
-		
+
 		if !result.Success {
 			return 0, fmt.Errorf("price fetch failed")
 		}
 		return result.Price, nil
 	}
-	
+
 	return 0, fmt.Errorf("all price fetch attempts failed")
 }
 
@@ -396,31 +396,31 @@ func loadLastSnapshot() (string, error) {
 
 func main() {
 	fmt.Printf("[%s] 开始检查空投信息...\n", time.Now().Format("2006-01-02 15:04:05"))
-	
+
 	msg, snapshot := getSendMsgAndSnapshot()
-	
+
 	if msg != "" {
 		// 读取上次的快照
 		lastSnapshot, err := loadLastSnapshot()
 		if err != nil {
 			fmt.Printf("读取上次快照失败: %v\n", err)
 		}
-		
+
 		// 比较当前快照和上次快照
 		currentHash := hashMsg(snapshot)
 		lastHash := hashMsg(lastSnapshot)
-		
+
 		if currentHash != lastHash {
 			fmt.Println("检测到空投信息变化，推送通知...")
 			fmt.Println(msg)
-			
+
 			// 推送通知
 			if err := sendToServerChan(msg); err != nil {
 				fmt.Println("推送Server酱失败:", err)
 			} else {
 				fmt.Println("推送成功！")
 			}
-			
+
 			// 保存当前快照
 			if err := saveSnapshot(snapshot); err != nil {
 				fmt.Printf("保存快照失败: %v\n", err)
