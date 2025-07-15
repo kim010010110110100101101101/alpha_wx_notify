@@ -347,8 +347,19 @@ func getSendMsgAndSnapshot() (string, string) {
 				amount = 0
 			}
 		}
-		// 比较日期是否是今天
-		if item.Date != time.Now().Format("2006-01-02") {
+		// 检查日期是否在今天往后3天内
+		today := time.Now()
+		itemDate, err := time.Parse("2006-01-02", item.Date)
+		if err != nil {
+			fmt.Printf("解析日期失败: %v\n", err)
+			continue
+		}
+		
+		// 计算日期差（天数）
+		daysDiff := int(itemDate.Sub(today.Truncate(24*time.Hour)).Hours() / 24)
+		
+		// 只包含今天往后3天内的项目（今天=0，明天=1，后天=2，大后天=3）
+		if daysDiff < 0 || daysDiff > 3 {
 			continue
 		}
 
