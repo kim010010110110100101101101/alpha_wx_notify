@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -170,10 +171,16 @@ func getSendMsgAndSnapshot() (string, string) {
 	snapshot := ""
 	isEmpty := true
 	for i, item := range apiResp.Airdrops {
-		amount, err := strconv.Atoi(item.Amount)
-		if err != nil {
-			fmt.Printf("转换数量失败: %v\n", err)
+		var amount int
+		if item.Amount == "" {
 			amount = 0
+		} else {
+			var err error
+			amount, err = strconv.Atoi(item.Amount)
+			if err != nil {
+				fmt.Printf("转换数量失败: %v\n", err)
+				amount = 0
+			}
 		}
 		// 比较日期是否是今天
 		if item.Date != time.Now().Format("2006-01-02") {
@@ -208,31 +215,58 @@ func hashMsg(msg string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func main() {
-	log.Println("测试一下有没有日志 ")
-	fmt.Printf("[%s] 空投监控服务启动\n", time.Now().Format("2006-01-02 15:04:05"))
+// 保存快照到文件
+func saveSnapshot(snapshot string) error {
+	return ioutil.WriteFile("last_snapshot.txt", []byte(snapshot), 0644)
+}
 
-	var lastHash string
-	cfg, err := loadConfig()
+// 读取上次的快照
+func loadLastSnapshot() (string, error) {
+	data, err := ioutil.ReadFile("last_snapshot.txt")
 	if err != nil {
-		log.Fatal(err)
+		if os.IsNotExist(err) {
+			return "", nil // 文件不存在，返回空字符串
+		}
+		return "", err
 	}
-	interval := time.Duration(cfg.Interval) * time.Minute
+	return string(data), nil
+}
 
-	for {
-		msg, snapshot := getSendMsgAndSnapshot()
+func main() {
+	fmt.Printf("[%s] 开始检查空投信息...\n", time.Now().Format("2006-01-02 15:04:05"))
+	
+	msg, snapshot := getSendMsgAndSnapshot()
+	
+	if msg != "" {
+		// 读取上次的快照
+		lastSnapshot, err := loadLastSnapshot()
+		if err != nil {
+			fmt.Printf("读取上次快照失败: %v\n", err)
+		}
+		
+		// 比较当前快照和上次快照
 		currentHash := hashMsg(snapshot)
-
-		if currentHash != lastHash && msg != "" {
+		lastHash := hashMsg(lastSnapshot)
+		
+		if currentHash != lastHash {
 			fmt.Println("检测到空投信息变化，推送通知...")
 			fmt.Println(msg)
+			
+			// 推送通知
 			if err := sendToServerChan(msg); err != nil {
 				fmt.Println("推送Server酱失败:", err)
+			} else {
+				fmt.Println("推送成功！")
 			}
-			lastHash = currentHash
+			
+			// 保存当前快照
+			if err := saveSnapshot(snapshot); err != nil {
+				fmt.Printf("保存快照失败: %v\n", err)
+			}
 		} else {
-			fmt.Println("无变化，无需推送。")
+			fmt.Println("空投信息无变化，跳过推送。")
 		}
-		time.Sleep(interval)
+	} else {
+		fmt.Println("今日无空投信息。")
 	}
 }

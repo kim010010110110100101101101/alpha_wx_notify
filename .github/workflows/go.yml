@@ -1,30 +1,52 @@
-# # This workflow will build a golang project
-# # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
 
-# name: Go
+name: Airdrop Monitor
 
-# on:
-#   schedule:
-#     - cron: '*/5 * * * *'  # 每五分钟执行一次
-#   push:
-#     branches: [ "main" ]
-#   pull_request:
-#     branches: [ "main" ]
+on:
+  schedule:
+    # 每10分钟执行一次，时间范围：北京时间8:00-24:00 (UTC时间0:00-16:00)
+    - cron: '*/10 0-16 * * *'
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:  # 允许手动触发
 
-# jobs:
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 获取完整历史以便访问快照文件
 
-#   build:
-#     runs-on: ubuntu-latest
-#     steps:
-#     - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
 
-#     - name: Set up Go
-#       uses: actions/setup-go@v4
-#       with:
-#         go-version: '1.23'
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
 
-#     - name: Build
-#       run: go build -v ./...
+    - name: Download dependencies
+      run: go mod download
 
-#     - name: Test
-#       run: go test -v ./...
+    - name: Build
+      run: go build -v ./...
+
+    - name: Run Airdrop Monitor
+      run: go run main.go
+
+    - name: Commit and push snapshot if changed
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add last_snapshot.txt || true
+        git diff --staged --quiet || git commit -m "Update airdrop snapshot [skip ci]"
+        git push || true
