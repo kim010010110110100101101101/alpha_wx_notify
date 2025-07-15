@@ -98,14 +98,29 @@ func getAirdrop() *ApiResponse {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
+		log.Println("读取响应体失败:", err)
+		return nil
+	}
+
+	// 打印响应状态码和前100个字符用于调试
+	fmt.Printf("HTTP状态码: %d\n", resp.StatusCode)
+	if len(body) > 100 {
+		fmt.Printf("响应内容前100字符: %s\n", string(body[:100]))
+	} else {
+		fmt.Printf("响应内容: %s\n", string(body))
+	}
+
+	// 检查HTTP状态码
+	if resp.StatusCode != 200 {
+		fmt.Printf("API请求失败，状态码: %d\n", resp.StatusCode)
 		return nil
 	}
 
 	var apiResp ApiResponse
 	err = json.Unmarshal(body, &apiResp)
 	if err != nil {
-		log.Println(err)
+		log.Println("JSON解析失败:", err)
+		log.Println("响应内容:", string(body))
 		return nil
 	}
 
@@ -167,6 +182,11 @@ func getSendMsgAndSnapshot() (string, string) {
 	}
 
 	apiResp := getAirdrop()
+	if apiResp == nil {
+		fmt.Println("获取空投数据失败")
+		return "", ""
+	}
+
 	msg := "| 项目 | 时间 | 积分 | 数量 | 阶段 | 价格(USD) |\n|---|---|---|---|---|---|\n"
 	snapshot := ""
 	isEmpty := true

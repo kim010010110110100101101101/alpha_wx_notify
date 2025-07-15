@@ -1,4 +1,5 @@
 {
     "sendkeys": ["SCT289725T2EMVwNkU6XxxSAXEdEUnWX36"],
-    "interval": 5
+    "interval": 5,
+    "fiterTge": false
 }
