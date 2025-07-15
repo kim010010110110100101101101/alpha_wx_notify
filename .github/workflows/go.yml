@@ -16,9 +16,13 @@ on:
 jobs:
   monitor:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 允许写入仓库内容
+      actions: read    # 允许读取actions
     steps:
     - uses: actions/checkout@v4
       with:
+        token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0  # 获取完整历史以便访问快照文件
 
     - name: Set up Go
@@ -44,9 +48,30 @@ jobs:
       run: go run main.go
 
     - name: Commit and push snapshot if changed
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add last_snapshot.txt || true
-        git diff --staged --quiet || git commit -m "Update airdrop snapshot [skip ci]"
-        git push || true
+        
+        # 检查文件是否存在并添加
+        if [ -f "last_snapshot.txt" ]; then
+          git add last_snapshot.txt
+          echo "Added last_snapshot.txt to staging"
+        else
+          echo "last_snapshot.txt not found, skipping"
+          exit 0
+        fi
+        
+        # 检查是否有变更需要提交
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          echo "Committing changes..."
+          git commit -m "Update airdrop snapshot [skip ci]"
+          
+          # 推送变更
+          echo "Pushing changes..."
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main
+          echo "Successfully pushed changes"
+        fi
