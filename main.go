@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -332,21 +333,11 @@ func getSendMsgAndSnapshot() (string, string) {
 		return "", ""
 	}
 
-	msg := "| 项目 | 时间 | 积分 | 数量 | 阶段 | 价格(USD) |\n|---|---|---|---|---|---|\n"
-	snapshot := ""
-	isEmpty := true
-	for i, item := range apiResp.Airdrops {
-		var amount int
-		if item.Amount == "" {
-			amount = 0
-		} else {
-			var err error
-			amount, err = strconv.Atoi(item.Amount)
-			if err != nil {
-				fmt.Printf("转换数量失败: %v\n", err)
-				amount = 0
-			}
-		}
+	// 收集符合条件的快照项
+	var snapshotItems []SnapshotItem
+	var validAirdrops []Airdrop
+	
+	for _, item := range apiResp.Airdrops {
 		// 检查日期是否在今天往后3天内
 		today := time.Now()
 		itemDate, err := time.Parse("2006-01-02", item.Date)
@@ -368,27 +359,230 @@ func getSendMsgAndSnapshot() (string, string) {
 			continue
 		}
 
-		price, err := fetchTokenPrice(item.Token)
-		if err != nil {
-			fmt.Printf("获取%s价格失败: %v\n", item.Token, err)
-			price = 0
-		}
-		msg += fmt.Sprintf("| %s(%s) | %s %s | %s | %s | %d | %.2f |\n",
-			item.Token, item.Name, item.Date, item.Time, item.Points, item.Amount, item.Phase, price*float64(amount))
-		snapshot += fmt.Sprintf("%s|%s|%s|%s|%s|%d\n",
-			item.Token, item.Name, item.Date, item.Time, item.Amount, item.Phase)
-		apiResp.Airdrops[i] = item
-		isEmpty = false
+		// 添加到快照项列表
+		snapshotItems = append(snapshotItems, SnapshotItem{
+			Token:  item.Token,
+			Name:   item.Name,
+			Date:   item.Date,
+			Time:   item.Time,
+			Amount: item.Amount,
+			Phase:  item.Phase,
+		})
+		validAirdrops = append(validAirdrops, item)
 	}
-	if isEmpty {
+	
+	if len(snapshotItems) == 0 {
 		return "", ""
 	}
+	
+	// 对快照项进行排序
+	sortSnapshotItems(snapshotItems)
+	
+	// 生成消息和快照
+	msg := "| 项目 | 时间 | 积分 | 数量 | 阶段 | 价格(USD) |\n|---|---|---|---|---|---|\n"
+	
+	for _, snapshotItem := range snapshotItems {
+		// 找到对应的airdrop项目来获取价格信息
+		var correspondingAirdrop *Airdrop
+		for _, airdrop := range validAirdrops {
+			if airdrop.Token == snapshotItem.Token && airdrop.Date == snapshotItem.Date && 
+			   airdrop.Time == snapshotItem.Time && airdrop.Phase == snapshotItem.Phase {
+				correspondingAirdrop = &airdrop
+				break
+			}
+		}
+		
+		if correspondingAirdrop == nil {
+			continue
+		}
+		
+		var amount int
+		if snapshotItem.Amount == "" {
+			amount = 0
+		} else {
+			var err error
+			amount, err = strconv.Atoi(snapshotItem.Amount)
+			if err != nil {
+				fmt.Printf("转换数量失败: %v\n", err)
+				amount = 0
+			}
+		}
+		
+		price, err := fetchTokenPrice(snapshotItem.Token)
+		if err != nil {
+			fmt.Printf("获取%s价格失败: %v\n", snapshotItem.Token, err)
+			price = 0
+		}
+		
+		// 如果type是tge，在名字后面加上(tge)
+		projectName := snapshotItem.Name
+		if correspondingAirdrop.Type == "tge" {
+			projectName += "(tge)"
+		}
+		
+		msg += fmt.Sprintf("| %s(%s) | %s %s | %s | %s | %d | %.2f |\n",
+			snapshotItem.Token, projectName, snapshotItem.Date, snapshotItem.Time, 
+			correspondingAirdrop.Points, snapshotItem.Amount, snapshotItem.Phase, price*float64(amount))
+	}
+	
+	// 生成排序后的快照字符串
+	snapshot := itemsToSnapshot(snapshotItems)
+	
 	return msg, snapshot
 }
 func hashMsg(msg string) string {
 	h := md5.New()
 	h.Write([]byte(msg))
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// 快照项结构体
+type SnapshotItem struct {
+	Token string
+	Name  string
+	Date  string
+	Time  string
+	Amount string
+	Phase int
+}
+
+// 解析快照字符串为结构体切片
+func parseSnapshot(snapshot string) []SnapshotItem {
+	var items []SnapshotItem
+	lines := strings.Split(strings.TrimSpace(snapshot), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		parts := strings.Split(line, "|")
+		if len(parts) >= 6 {
+			phase, _ := strconv.Atoi(parts[5])
+			items = append(items, SnapshotItem{
+				Token:  parts[0],
+				Name:   parts[1],
+				Date:   parts[2],
+				Time:   parts[3],
+				Amount: parts[4],
+				Phase:  phase,
+			})
+		}
+	}
+	return items
+}
+
+// 将结构体切片转换为快照字符串
+func itemsToSnapshot(items []SnapshotItem) string {
+	var lines []string
+	for _, item := range items {
+		lines = append(lines, fmt.Sprintf("%s|%s|%s|%s|%s|%d",
+			item.Token, item.Name, item.Date, item.Time, item.Amount, item.Phase))
+	}
+	return strings.Join(lines, "\n")
+}
+
+// 对快照项进行排序：先按时间排序（时间靠近的在上面），再按字母排序
+func sortSnapshotItems(items []SnapshotItem) {
+	sort.Slice(items, func(i, j int) bool {
+		// 解析时间
+		timeI := parseDateTime(items[i].Date, items[i].Time)
+		timeJ := parseDateTime(items[j].Date, items[j].Time)
+		
+		// 如果时间不同，按时间排序（时间靠近的在上面）
+		if !timeI.Equal(timeJ) {
+			return timeI.Before(timeJ)
+		}
+		
+		// 时间相同时，按Token字母排序
+		return items[i].Token < items[j].Token
+	})
+}
+
+// 解析日期时间字符串
+func parseDateTime(date, timeStr string) time.Time {
+	if date == "" {
+		return time.Time{}
+	}
+	dateTimeStr := date
+	if timeStr != "" {
+		dateTimeStr += " " + timeStr
+		layout := "2006-01-02 15:04"
+		if parsed, err := time.Parse(layout, dateTimeStr); err == nil {
+			return parsed
+		}
+	}
+	layout := "2006-01-02"
+	if parsed, err := time.Parse(layout, date); err == nil {
+		return parsed
+	}
+	return time.Time{}
+}
+
+// 比较两个快照是否相同（忽略顺序）
+func compareSnapshots(snapshot1, snapshot2 string) bool {
+	items1 := parseSnapshot(snapshot1)
+	items2 := parseSnapshot(snapshot2)
+	
+	// 如果数量不同，直接返回false
+	if len(items1) != len(items2) {
+		return false
+	}
+	
+	// 创建map来统计每个项目的出现次数
+	count1 := make(map[string]int)
+	count2 := make(map[string]int)
+	
+	for _, item := range items1 {
+		key := fmt.Sprintf("%s|%s|%s|%s|%s|%d", item.Token, item.Name, item.Date, item.Time, item.Amount, item.Phase)
+		count1[key]++
+	}
+	
+	for _, item := range items2 {
+		key := fmt.Sprintf("%s|%s|%s|%s|%s|%d", item.Token, item.Name, item.Date, item.Time, item.Amount, item.Phase)
+		count2[key]++
+	}
+	
+	// 比较两个map是否相同
+	for key, count := range count1 {
+		if count2[key] != count {
+			return false
+		}
+	}
+	
+	return true
+}
+
+// 检测快照变化类型
+func detectSnapshotChange(oldSnapshot, newSnapshot string) (bool, bool) {
+	oldItems := parseSnapshot(oldSnapshot)
+	newItems := parseSnapshot(newSnapshot)
+	
+	// 创建map来快速查找
+	oldMap := make(map[string]bool)
+	newMap := make(map[string]bool)
+	
+	for _, item := range oldItems {
+		key := fmt.Sprintf("%s|%s|%s|%s|%s|%d", item.Token, item.Name, item.Date, item.Time, item.Amount, item.Phase)
+		oldMap[key] = true
+	}
+	
+	for _, item := range newItems {
+		key := fmt.Sprintf("%s|%s|%s|%s|%s|%d", item.Token, item.Name, item.Date, item.Time, item.Amount, item.Phase)
+		newMap[key] = true
+	}
+	
+	// 检查是否有新增项目
+	hasAddition := false
+	for key := range newMap {
+		if !oldMap[key] {
+			hasAddition = true
+			break
+		}
+	}
+	
+	// 检查是否只有删除（没有新增）
+	isOnlyDeletion := !hasAddition && len(newItems) < len(oldItems)
+	
+	return hasAddition, isOnlyDeletion
 }
 
 // 保存快照到文件
@@ -420,29 +614,45 @@ func main() {
 			fmt.Printf("读取上次快照失败: %v\n", err)
 		}
 
-		// 比较当前快照和上次快照
-		currentHash := hashMsg(snapshot)
-		lastHash := hashMsg(lastSnapshot)
-
-		if currentHash != lastHash {
-			fmt.Println("检测到空投信息变化，推送通知...")
-			fmt.Println(msg)
-
-			// 推送通知
-			if err := sendToServerChan(msg); err != nil {
-				fmt.Println("推送Server酱失败:", err)
+		// 使用新的对比函数来忽略顺序
+		if !compareSnapshots(snapshot, lastSnapshot) {
+			// 检测变化类型
+			_, isOnlyDeletion := detectSnapshotChange(lastSnapshot, snapshot)
+			
+			if isOnlyDeletion {
+				fmt.Println("检测到空投信息删除，不进行推送，仅更新快照...")
+				// 保存当前快照但不推送
+				if err := saveSnapshot(snapshot); err != nil {
+					fmt.Printf("保存快照失败: %v\n", err)
+				}
 			} else {
-				fmt.Println("推送成功！")
-			}
+				fmt.Println("检测到空投信息变化，推送通知...")
+				fmt.Println(msg)
 
-			// 保存当前快照
-			if err := saveSnapshot(snapshot); err != nil {
-				fmt.Printf("保存快照失败: %v\n", err)
+				// 推送通知
+				if err := sendToServerChan(msg); err != nil {
+					fmt.Println("推送Server酱失败:", err)
+				} else {
+					fmt.Println("推送成功！")
+				}
+
+				// 保存当前快照
+				if err := saveSnapshot(snapshot); err != nil {
+					fmt.Printf("保存快照失败: %v\n", err)
+				}
 			}
 		} else {
 			fmt.Println("空投信息无变化，跳过推送。")
 		}
 	} else {
 		fmt.Println("今日无空投信息。")
+		// 如果当前没有空投信息，但之前有，也要更新快照
+		lastSnapshot, err := loadLastSnapshot()
+		if err == nil && lastSnapshot != "" {
+			fmt.Println("清空快照文件...")
+			if err := saveSnapshot(""); err != nil {
+				fmt.Printf("清空快照失败: %v\n", err)
+			}
+		}
 	}
 }
