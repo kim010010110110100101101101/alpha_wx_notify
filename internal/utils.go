@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"compress/gzip"
@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -24,8 +23,8 @@ type Config struct {
 }
 
 // LoadConfig 读取配置文件
-func LoadConfig() (*Config, error) {
-	data, err := ioutil.ReadFile("config.json")
+func LoadConfig(configPath string) (*Config, error) {
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -50,15 +49,11 @@ func readResponseBody(resp *http.Response) ([]byte, error) {
 		reader = gzipReader
 	}
 
-	return ioutil.ReadAll(reader)
+	return io.ReadAll(reader)
 }
 
 // SendToServerChan 发送到Server酱
-func SendToServerChan(msg string, title string) error {
-	cfg, err := LoadConfig()
-	if err != nil {
-		return err
-	}
+func SendToServerChan(msg string, title string, cfg *Config) error {
 	for _, sendkey := range cfg.SendKeys {
 		resp, err := serverchan_sdk.ScSend(sendkey, title, msg, nil)
 		if err != nil {
@@ -80,12 +75,12 @@ func HashMsg(msg string) string {
 
 // SaveSnapshot 保存快照到文件
 func SaveSnapshot(snapshot string, filename string) error {
-	return ioutil.WriteFile(filename, []byte(snapshot), 0644)
+	return os.WriteFile(filename, []byte(snapshot), 0644)
 }
 
 // LoadLastSnapshot 读取上次的快照
 func LoadLastSnapshot(filename string) (string, error) {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", nil // 文件不存在，返回空字符串

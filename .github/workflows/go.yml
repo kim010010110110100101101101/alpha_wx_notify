@@ -42,10 +42,14 @@ jobs:
       run: go mod download
 
     - name: Build
-      run: go build -v ./...
+      run: |
+        cd cmd
+        go build -v -o ../alpha .
 
     - name: Run Airdrop Monitor
-      run: go run main.go
+      run: |
+        cd cmd
+        go run main.go
 
     - name: Commit and push snapshot if changed
       env:
@@ -55,11 +59,11 @@ jobs:
         git config --local user.name "GitHub Action"
         
         # 检查文件是否存在并添加
-        if [ -f "last_snapshot.txt" ]; then
-          git add last_snapshot.txt
-          echo "Added last_snapshot.txt to staging"
+        if [ -f "data/last_snapshot.txt" ]; then
+          git add data/last_snapshot.txt
+          echo "Added data/last_snapshot.txt to staging"
         else
-          echo "last_snapshot.txt not found, skipping"
+          echo "data/last_snapshot.txt not found, skipping"
           exit 0
         fi
         
