@@ -1,4 +1,4 @@
-TAKER|Taker Protocol|2025-07-18|||1
 ERA|Caldera|2025-07-18|15:30|150|2
+TAKER|Taker Protocol|2025-07-18|18:00|1000|1
 ESPORTS|Yooldo Games|2025-07-19|||1
 TA|Trusta . AI|2025-07-21|15:00||1
