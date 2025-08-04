@@ -1,4 +1,4 @@
-CYC|Cycle Network|2025-08-04|||1
+CYC|Cycle Network|2025-08-04|19:00|800|1
 DARK|DarkStar|2025-08-04|20:00|1000|1
 TOWNS|Towns|2025-08-05|||1
 FIR|Fireverse|2025-08-06|||1
