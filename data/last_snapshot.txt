@@ -1,4 +1,4 @@
 PROVE|Succinct|2025-08-05|||1
-SUP|Superp|2025-08-05|||1
 TOWNS|Towns|2025-08-05|||1
+SUP|Superp|2025-08-05|18:00|500|1
 FIR|Fireverse|2025-08-06|||1
