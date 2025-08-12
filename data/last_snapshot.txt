@@ -2,3 +2,4 @@ SLAY|SatLayer|2025-08-12|12:00|525|2
 WAI|World3|2025-08-12|16:00|800|1
 BTR|BitlayerLabs|2025-08-13|16:00||1
 OVL|Overlay Protocol|2025-08-14|||1
+AIBOT|cherrytgbot|2025-08-14|16:00||1
