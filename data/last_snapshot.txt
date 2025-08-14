@@ -1,5 +1,0 @@
-OVL|Overlay Protocol|2025-08-14|||1
-AIBOT|Cherrytgbot|2025-08-14|16:00||1
-REVA|REVA|2025-08-14|19:00||1
-PUBLIC|PublicAI|2025-08-15|||1
-TCOM|TCOM Global|2025-08-15|||1
