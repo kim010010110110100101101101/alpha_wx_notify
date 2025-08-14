@@ -1,4 +1,3 @@
-BTR|BitlayerLabs|2025-08-13|16:00|1322.51|1
 OVL|Overlay Protocol|2025-08-14|||1
 AIBOT|Cherrytgbot|2025-08-14|16:00||1
 REVA|REVA|2025-08-14|19:00||1
