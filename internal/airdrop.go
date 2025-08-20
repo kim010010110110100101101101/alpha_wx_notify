@@ -3,7 +3,6 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"sort"
@@ -109,7 +108,7 @@ func (s *AirdropService) GetAirdropData() *ApiResponse {
 		}
 		defer resp.Body.Close()
 
-		body, err := io.ReadAll(resp.Body)
+		body, err := readResponseBody(resp)
 		if err != nil {
 			log.Printf("读取响应体失败 (尝试 %d/3): %v\n", attempt, err)
 			if attempt < 3 {
