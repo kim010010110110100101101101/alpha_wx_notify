@@ -1,2 +1,2 @@
-FST|FreeStyle Classic|2025-08-24|||1
+FST|FreeStyle Classic|2025-08-24|17:00|800|1
 MTP|Multiple Network|2025-08-25|||1
