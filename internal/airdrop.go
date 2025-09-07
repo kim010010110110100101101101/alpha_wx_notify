@@ -16,19 +16,19 @@ import (
 // Airdrop 空投结构体，用于存储从API获取的空投信息
 // 包含项目名称、代币、日期、时间、数量等关键信息
 type Airdrop struct {
-	Token           string `json:"token"`           // 代币符号
-	Name            string `json:"name"`            // 项目名称
-	Date            string `json:"date"`            // 空投日期，格式为YYYY-MM-DD
-	Time            string `json:"time"`            // 空投时间，格式为HH:MM
-	Points          string `json:"points"`          // 所需积分
-	Amount          string `json:"amount"`          // 空投数量
-	Type            string `json:"type"`            // 空投类型，如"airdrop"或"tge"
-	Phase           int    `json:"phase"`           // 空投阶段
-	Status          string `json:"status"`          // 空投状态
-	SystemTimestamp int64  `json:"system_timestamp"` // 系统时间戳
-	Completed       bool   `json:"completed"`       // 是否已完成
-	ContractAddress string `json:"contract_address"` // 合约地址
-	ChainID         string `json:"chain_id"`         // 链ID
+	Token           string      `json:"token"`           // 代币符号
+	Name            string      `json:"name"`            // 项目名称
+	Date            string      `json:"date"`            // 空投日期，格式为YYYY-MM-DD
+	Time            string      `json:"time"`            // 空投时间，格式为HH:MM
+	Points          interface{} `json:"points"`          // 所需积分，可能是字符串或数字
+	Amount          string      `json:"amount"`          // 空投数量
+	Type            string      `json:"type"`            // 空投类型，如"airdrop"或"tge"
+	Phase           int         `json:"phase"`           // 空投阶段
+	Status          string      `json:"status"`          // 空投状态
+	SystemTimestamp int64       `json:"system_timestamp"` // 系统时间戳
+	Completed       bool        `json:"completed"`       // 是否已完成
+	ContractAddress string      `json:"contract_address"` // 合约地址
+	ChainID         string      `json:"chain_id"`         // 链ID
 }
 
 // ApiResponse API响应结构体，包含空投列表
@@ -73,7 +73,13 @@ func (s *AirdropService) GetAirdropData() *ApiResponse {
 	// 使用当前时间戳作为URL参数避免缓存
 	url := fmt.Sprintf("https://alpha123.uk/api/data?t=%d&fresh=1", time.Now().UnixMilli())
 
+	fmt.Println("开始请求API数据:", url)
+	fmt.Println("注意：已更新请求头以解决403权限问题")
+
 	// 重试机制，最多尝试3次
+	var apiResp ApiResponse
+	var success bool
+	
 	for attempt := 1; attempt <= 3; attempt++ {
 		fmt.Printf("尝试第 %d 次请求...\n", attempt)
 		log.Printf("请求地址: %s", url)
@@ -87,23 +93,22 @@ func (s *AirdropService) GetAirdropData() *ApiResponse {
 
 		// 设置更完整的浏览器请求头，模拟真实浏览器请求
 		// 这些请求头有助于绕过一些反爬虫措施
-		req.Header.Set("Accept", "application/json, text/plain, */*") // 接受JSON和文本响应
-		req.Header.Set("Accept-Language", "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7") // 语言偏好
-		req.Header.Set("Accept-Encoding", "gzip, deflate, br") // 支持的压缩方式
-		req.Header.Set("Cache-Control", "no-cache") // 禁用缓存
+		req.Header.Set("Accept", "*/*") // 接受任何类型的响应
+		req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9") // 语言偏好
+		req.Header.Set("Accept-Encoding", "gzip, deflate, br, zstd") // 支持的压缩方式
 		req.Header.Set("Connection", "keep-alive") // 保持连接
-		req.Header.Set("DNT", "1") // 请求不跟踪
-		req.Header.Set("Origin", "https://alpha123.uk") // 请求来源
-		req.Header.Set("Pragma", "no-cache") // 禁用缓存
-		req.Header.Set("Referer", "https://alpha123.uk/") // 引用页
-		req.Header.Set("Sec-Ch-Ua", `"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"`) // 浏览器信息
-		req.Header.Set("Sec-Ch-Ua-Mobile", "?0") // 非移动设备
-		req.Header.Set("Sec-Ch-Ua-Platform", `"Linux"`) // 操作系统平台
+		req.Header.Set("Cookie", "cf_clearance=hSIJzCVzlELiNe.dlq.v_DpVOe0pRvCd.T.dDcJiqWo-1757240233-1.2.1.1-jACMaDCQ6yI674vllyyo_nPGju.lKEFR30kZzM.QqmeHB6jsmFNq1i06w4_sk_1Rf42O2X8uhaVhAeHw6tuXzShLMfTP8Rlpcm3WMZJmNdTvsYli_aCiRfCdahamu_x8_8iSRz9mJvkoPnXCa6yYtAq9xa8ZiN75iF_arLJkfNLFSx2758yD1Pchgth9fjPQzsy0pzsGACAQ8bghvPvA3MT7oiBh2oR9Pq1OFvXHPw0; _clck=1r58hy1%5E2%5Efz4%5E0%5E2023; _clsk=10xp6jp%5E1757240255468%5E2%5E1%5Es.clarity.ms%2Fcollect") // CloudFlare验证Cookie
+		req.Header.Set("If-Modified-Since", "Sun, 07 Sep 2025 10:16:15 GMT") // 条件请求
+		req.Header.Set("If-None-Match", "W/\"68bd5b6f-ce9\"") // ETag条件请求
+		req.Header.Set("Priority", "u=1, i") // 请求优先级
+		req.Header.Set("Referer", "https://alpha123.uk/zh/index.html") // 引用页
+		req.Header.Set("Sec-Ch-Ua", "\"Not A(Brand\";v=\"8\", \"Chromium\";v=\"132\", \"Google Chrome\";v=\"132\"") // 浏览器信息
+		req.Header.Set("Sec-Ch-Ua-Mobile", "?1") // 移动设备
+		req.Header.Set("Sec-Ch-Ua-Platform", "\"Android\"") // 操作系统平台
 		req.Header.Set("Sec-Fetch-Dest", "empty") // 请求目标
 		req.Header.Set("Sec-Fetch-Mode", "cors") // 请求模式
 		req.Header.Set("Sec-Fetch-Site", "same-origin") // 请求站点
-		req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36") // 用户代理
-		req.Header.Set("X-Requested-With", "XMLHttpRequest") // XHR请求标识
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36") // 用户代理
 
 		// 设置HTTP客户端，包括30秒超时时间
 		// 超时设置可以防止请求长时间挂起
@@ -112,6 +117,7 @@ func (s *AirdropService) GetAirdropData() *ApiResponse {
 		}
 
 		// 执行HTTP请求
+		fmt.Println("发送请求中...")
 		resp, err := client.Do(req)
 		if err != nil {
 			log.Printf("请求失败 (尝试 %d/3): %v\n", attempt, err)
@@ -140,6 +146,7 @@ func (s *AirdropService) GetAirdropData() *ApiResponse {
 		// 打印响应状态码和响应内容用于调试
 		fmt.Printf("HTTP状态码: %d\n", resp.StatusCode)
 		fmt.Printf("响应内容: %s\n", string(body))
+		fmt.Printf("请求返回状态码: %d\n", resp.StatusCode)
 
 		// 检查HTTP状态码
 		if resp.StatusCode == 403 { // 403表示禁止访问，可能是被反爬虫机制拦截
@@ -165,20 +172,18 @@ func (s *AirdropService) GetAirdropData() *ApiResponse {
 		}
 
 		// 解析JSON响应
-		var apiResp ApiResponse
 		err = json.Unmarshal(body, &apiResp)
 		if err != nil { // JSON解析失败
-			log.Printf("JSON解析失败 (尝试 %d/3): %v\n", attempt, err)
-			log.Println("响应内容:", string(body)) // 打印完整响应内容以便调试
-			if attempt < 3 {
-				delay := time.Duration(2+attempt) * time.Second
-				fmt.Printf("等待 %v 后重试...\n", delay)
-				time.Sleep(delay)
-			}
-			continue
+			fmt.Printf("解析JSON失败: %v\n", err)
+			continue // 尝试下一次请求，而不是直接返回nil
 		}
 
 		// 成功获取数据，处理时间偏移
+		fmt.Printf("成功获取数据，共有 %d 个空投项目\n", len(apiResp.Airdrops))
+		success = true
+		break // 成功获取数据，跳出重试循环
+		// 对于Phase 2的项目，需要将时间加上18小时进行调整
+		// 对于Phase 2的项目，需要将时间加上18小时进行调整
 		// 对于Phase 2的项目，需要将时间加上18小时进行调整
 		for i, item := range apiResp.Airdrops {
 			if item.Phase == 2 && item.Date != "" && item.Time != "" {
@@ -201,9 +206,15 @@ func (s *AirdropService) GetAirdropData() *ApiResponse {
 		return &apiResp // 返回成功获取的数据
 	}
 
-	// 所有重试都失败了
-	fmt.Println("所有重试都失败，无法获取空投数据")
-	return nil // 返回nil表示获取失败
+	// 检查是否成功获取数据
+	if !success {
+		fmt.Println("所有重试都失败，无法获取空投数据")
+		return nil // 返回nil表示获取失败
+	}
+	
+	// 成功获取数据，返回结果
+	fmt.Println("成功返回API数据")
+	return &apiResp
 }
 
 // FetchTokenPrice 获取token单价
@@ -436,9 +447,23 @@ func (s *AirdropService) GenerateMessageAndSnapshot() (string, string) {
 
 		// 格式化消息行，添加到消息内容中
 		// 包含：代币符号、项目名称、日期、时间、积分、数量、阶段和价值(USD)
+		
+		// 处理Points字段，将interface{}转换为字符串
+		var pointsStr string
+		switch p := correspondingAirdrop.Points.(type) {
+		case string:
+			pointsStr = p
+		case float64:
+			pointsStr = fmt.Sprintf("%.0f", p)
+		case int:
+			pointsStr = fmt.Sprintf("%d", p)
+		default:
+			pointsStr = fmt.Sprintf("%v", p)
+		}
+		
 		msg += fmt.Sprintf("| %s(%s) | %s %s | %s | %s | %d | %.2f |\n",
 			snapshotItem.Token, projectName, snapshotItem.Date, snapshotItem.Time,
-			correspondingAirdrop.Points, snapshotItem.Amount, snapshotItem.Phase, price*float64(amount))
+			pointsStr, snapshotItem.Amount, snapshotItem.Phase, price*float64(amount))
 	}
 
 	// 生成排序后的快照字符串，用于保存和比较

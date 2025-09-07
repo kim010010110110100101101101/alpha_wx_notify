@@ -98,13 +98,55 @@ func ProcessAirdrops() {
 
 // main 程序入口函数
 // 调用ProcessAirdrops函数开始处理空投信息
+// 添加测试模式，直接输出API请求结果，验证请求头修改是否有效
 func main() {
+	// 测试模式：直接获取API数据并输出结果，验证请求头修改是否有效
+	fmt.Println("=== 测试模式：验证API请求 ===")
+	
+	// 加载配置
+	cfg, err := internal.LoadConfig("../config/config.json")
+	if err != nil {
+		log.Printf("加载配置失败: %v\n", err)
+		// 即使配置加载失败，也继续测试API请求
+	}
+
+	// 创建空投服务实例
+	airdropService := internal.NewAirdropService(cfg)
+
+	// 获取空投数据
+	apiResp := airdropService.GetAirdropData()
+	if apiResp == nil {
+		fmt.Println("获取空投数据失败，请求可能仍然返回403错误")
+		return
+	} else {
+		fmt.Println("成功获取API响应，状态正常")
+	}
+
+	// 请求成功，打印数据
+	fmt.Println("请求成功！获取到空投数据:")
+	fmt.Printf("总共获取到 %d 个空投项目\n", len(apiResp.Airdrops))
+
+	// 打印前5个项目的信息作为示例
+	fmt.Println("\n前5个项目示例:")
+	count := 0
+	for _, item := range apiResp.Airdrops {
+		if count >= 5 {
+			break
+		}
+		fmt.Printf("项目: %s(%s), 日期: %s, 时间: %s, 数量: %s, 阶段: %d\n",
+			item.Token, item.Name, item.Date, item.Time, item.Amount, item.Phase)
+		count++
+	}
+
+	fmt.Println("\n测试完成，请求头修改有效！")
+	
+	// 注释掉正常处理流程，仅进行测试
 	// 记录开始时间，便于调试和性能分析
-	start := time.Now()
+	// start := time.Now()
 	
 	// 调用主要处理函数
-	ProcessAirdrops()
+	// ProcessAirdrops()
 	
 	// 记录执行耗时
-	fmt.Printf("处理完成，耗时: %v\n", time.Since(start))
+	// fmt.Printf("处理完成，耗时: %v\n", time.Since(start))
 }
