@@ -7,6 +7,7 @@ import (
 	"fmt"           // 用于格式化输出
 	"log"           // 用于日志记录
 	"net/http"      // 用于HTTP请求
+	"os"            // 用于环境变量
 	"sort"          // 用于排序
 	"strconv"       // 用于字符串转换
 	"strings"       // 用于字符串处理
@@ -97,7 +98,12 @@ func (s *AirdropService) GetAirdropData() *ApiResponse {
 		req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9") // 语言偏好
 		req.Header.Set("Accept-Encoding", "gzip, deflate, br, zstd") // 支持的压缩方式
 		req.Header.Set("Connection", "keep-alive") // 保持连接
-		req.Header.Set("Cookie", "cf_clearance=hSIJzCVzlELiNe.dlq.v_DpVOe0pRvCd.T.dDcJiqWo-1757240233-1.2.1.1-jACMaDCQ6yI674vllyyo_nPGju.lKEFR30kZzM.QqmeHB6jsmFNq1i06w4_sk_1Rf42O2X8uhaVhAeHw6tuXzShLMfTP8Rlpcm3WMZJmNdTvsYli_aCiRfCdahamu_x8_8iSRz9mJvkoPnXCa6yYtAq9xa8ZiN75iF_arLJkfNLFSx2758yD1Pchgth9fjPQzsy0pzsGACAQ8bghvPvA3MT7oiBh2oR9Pq1OFvXHPw0; _clck=1r58hy1%5E2%5Efz4%5E0%5E2023; _clsk=10xp6jp%5E1757240255468%5E2%5E1%5Es.clarity.ms%2Fcollect") // CloudFlare验证Cookie
+		// 优先使用环境变量中的Cookie，如果不存在则使用硬编码的Cookie
+		cfCookie := os.Getenv("CF_COOKIE")
+		if cfCookie == "" {
+			cfCookie = "cf_clearance=hSIJzCVzlELiNe.dlq.v_DpVOe0pRvCd.T.dDcJiqWo-1757240233-1.2.1.1-jACMaDCQ6yI674vllyyo_nPGju.lKEFR30kZzM.QqmeHB6jsmFNq1i06w4_sk_1Rf42O2X8uhaVhAeHw6tuXzShLMfTP8Rlpcm3WMZJmNdTvsYli_aCiRfCdahamu_x8_8iSRz9mJvkoPnXCa6yYtAq9xa8ZiN75iF_arLJkfNLFSx2758yD1Pchgth9fjPQzsy0pzsGACAQ8bghvPvA3MT7oiBh2oR9Pq1OFvXHPw0; _clck=1r58hy1%5E2%5Efz4%5E0%5E2023; _clsk=10xp6jp%5E1757240255468%5E2%5E1%5Es.clarity.ms%2Fcollect"
+		}
+		req.Header.Set("Cookie", cfCookie) // CloudFlare验证Cookie
 		req.Header.Set("If-Modified-Since", "Sun, 07 Sep 2025 10:16:15 GMT") // 条件请求
 		req.Header.Set("If-None-Match", "W/\"68bd5b6f-ce9\"") // ETag条件请求
 		req.Header.Set("Priority", "u=1, i") // 请求优先级
@@ -108,7 +114,12 @@ func (s *AirdropService) GetAirdropData() *ApiResponse {
 		req.Header.Set("Sec-Fetch-Dest", "empty") // 请求目标
 		req.Header.Set("Sec-Fetch-Mode", "cors") // 请求模式
 		req.Header.Set("Sec-Fetch-Site", "same-origin") // 请求站点
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36") // 用户代理
+		// 优先使用环境变量中的User-Agent，如果不存在则使用默认值
+		userAgent := os.Getenv("USER_AGENT")
+		if userAgent == "" {
+			userAgent = "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36"
+		}
+		req.Header.Set("User-Agent", userAgent) // 用户代理
 
 		// 设置HTTP客户端，包括30秒超时时间
 		// 超时设置可以防止请求长时间挂起

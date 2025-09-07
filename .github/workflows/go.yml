@@ -47,6 +47,9 @@ jobs:
         go build -v -o ../alpha .
 
     - name: Run Airdrop Monitor
+      env:
+        CF_COOKIE: ${{ secrets.CF_COOKIE }}
+        USER_AGENT: ${{ secrets.USER_AGENT }}
       run: |
         cd cmd
         go run main.go
